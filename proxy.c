@@ -85,6 +85,26 @@ int main(int argc, char const *argv[])
                 }
             }
         }
+
+        // Check for data from the source client.
+        // Broadcast incoming data to the destination clients.
+        if (source_client != -1 && FD_ISSET(source_client, &socket_set)) {
+            int byte_count = recv(source_client, buffer, BUFFER_SIZE, 0);
+            if (byte_count > 0) {
+                printf("Data:\n");
+                for (int i = 0; i < byte_count; i++)
+                    printf("%02x ", buffer[i]);
+                printf("\n");
+
+                for (int i = 0; i < 100; i++) {
+                    if (destination_clients[i] > 0) {
+                        send(destination_clients[i], buffer, byte_count, 0);
+                    }
+                }
+            } else if (byte_count == -1) {
+                printf("Data error!\n");
+            }
+        }
     }
 
 
