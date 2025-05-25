@@ -42,6 +42,31 @@ int create_listener(int port, int max_clients) {
     return socket_fd;
 }
 
+int validate_packet(unsigned char *raw_packet, int packet_size) {
+
+    if (packet_size < sizeof(ctmp_packet)) {
+        return 0;
+    }
+
+    ctmp_packet *packet = (ctmp_packet *)raw_packet;
+
+    if (packet->magic != 0xcc) {
+        printf("Wrong magic! %u\n", packet->magic);
+        return 0;
+    }
+
+    int expected_length = ntohs(packet->length);
+    int actual_length = packet_size - sizeof(ctmp_packet);
+    if (expected_length != actual_length) {
+        printf("Wrong length!\n");
+        return 0;
+    }
+
+    printf("Validate packet!\n");
+
+    return 1;
+}
+
 int main(int argc, char const *argv[])
 {
     fd_set socket_set;
@@ -102,14 +127,12 @@ int main(int argc, char const *argv[])
         if (source_client != -1 && FD_ISSET(source_client, &socket_set)) {
             int byte_count = recv(source_client, buffer, BUFFER_SIZE, 0);
             if (byte_count > 0) {
-                printf("Data:\n");
-                for (int i = 0; i < byte_count; i++)
-                    printf("%02x ", buffer[i]);
-                printf("\n");
 
+                if (validate_packet(buffer, byte_count)) {
                     for (int i = 0; i < MAX_DESTINATION_CLIENTS; i++) {
                     if (destination_clients[i] > 0) {
                         send(destination_clients[i], buffer, byte_count, 0);
+                        }
                     }
                 }
             } else if (byte_count == -1) {
