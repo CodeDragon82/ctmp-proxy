@@ -77,9 +77,11 @@ int main(int argc, char const *argv[])
         }
 
         // Check for connections on the source socket.
-        if (FD_ISSET(source_socket, &socket_set) && source_client == -1) {
+        if (FD_ISSET(source_socket, &socket_set)) {
+            if (source_client == -1) printf("Source connection!\n");
+            else printf("Source changed!\n");
+
             source_client = accept(source_socket, (struct sockaddr *)NULL, NULL);
-            printf("Source connection!\n");
         }
 
         // Check for connections on the destination socket.
