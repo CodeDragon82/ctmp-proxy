@@ -8,7 +8,15 @@
 
 #define SOURCE_PORT 33333
 #define DESTINATION_PORT 44444
-#define BUFFER_SIZE 1024
+#define BUFFER_SIZE 70000
+
+typedef struct __attribute__((packed)) {
+    uint8_t magic;
+    uint8_t padding1;
+    uint16_t length;
+    uint32_t padding2;
+    uint8_t data[];
+} ctmp_packet;
 
 int create_listener(int port, int max_clients) {
     int socket_fd;
