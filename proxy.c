@@ -9,6 +9,7 @@
 #define SOURCE_PORT 33333
 #define DESTINATION_PORT 44444
 #define BUFFER_SIZE 70000
+#define MAX_DESTINATION_CLIENTS 100
 
 typedef struct __attribute__((packed)) {
     uint8_t magic;
@@ -49,7 +50,7 @@ int main(int argc, char const *argv[])
     int destination_socket = create_listener(DESTINATION_PORT, 10);
 
     int source_client = -1;
-    int destination_clients[100] = {0};
+    int destination_clients[MAX_DESTINATION_CLIENTS] = {0};
 
     char buffer[BUFFER_SIZE];
 
@@ -87,7 +88,7 @@ int main(int argc, char const *argv[])
         // Check for connections on the destination socket.
         if (FD_ISSET(destination_socket, &socket_set)) {
             int new_destination_client = accept(destination_socket, (struct sockaddr *)NULL, NULL);
-            for (int i = 0; i < 100; i++) {
+            for (int i = 0; i < MAX_DESTINATION_CLIENTS; i++) {
                 if (destination_clients[i] == 0) {
                     destination_clients[i] = new_destination_client;
                     printf("New destination connection!\n");
@@ -106,7 +107,7 @@ int main(int argc, char const *argv[])
                     printf("%02x ", buffer[i]);
                 printf("\n");
 
-                for (int i = 0; i < 100; i++) {
+                    for (int i = 0; i < MAX_DESTINATION_CLIENTS; i++) {
                     if (destination_clients[i] > 0) {
                         send(destination_clients[i], buffer, byte_count, 0);
                     }
