@@ -127,11 +127,15 @@ int main(int argc, char const *argv[])
         // Check for connections on the destination socket.
         if (FD_ISSET(destination_socket, &socket_set)) {
             int new_destination_client = accept(destination_socket, (struct sockaddr *)NULL, NULL);
-            for (int i = 0; i < MAX_DESTINATION_CLIENTS; i++) {
-                if (destination_clients[i] == 0) {
-                    destination_clients[i] = new_destination_client;
-                    printf("New destination connection!\n");
-                    break;
+            if (new_destination_client < 0) {
+                perror("New destination connection failed");
+            } else {
+                for (int i = 0; i < MAX_DESTINATION_CLIENTS; i++) {
+                    if (destination_clients[i] == 0) {
+                        destination_clients[i] = new_destination_client;
+                        printf("New destination connection: %d\n", new_destination_client);
+                        break;
+                    }
                 }
             }
         }
