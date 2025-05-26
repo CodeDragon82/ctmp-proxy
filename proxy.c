@@ -73,6 +73,19 @@ int validate_packet(unsigned char *raw_packet, int packet_size) {
     return 1;
 }
 
+void broadcast(int *destination_clients, char *packet, int packet_size) {
+    for (int i = 0; i < MAX_DESTINATION_CLIENTS; i++) {
+        if (destination_clients[i] > 0) {
+            int bytes_sent = send(destination_clients[i], packet, packet_size, 0);
+            if (bytes_sent < 0) {
+                perror("Failed to send data to destination client");
+            } else {
+                printf("Send %d bytes to %d\n", bytes_sent, destination_clients[i]);
+            }
+        }
+    }
+}
+
 int main(int argc, char const *argv[])
 {
     fd_set socket_set;
@@ -145,13 +158,8 @@ int main(int argc, char const *argv[])
         if (source_client != -1 && FD_ISSET(source_client, &socket_set)) {
             int byte_count = recv(source_client, buffer, BUFFER_SIZE, 0);
             if (byte_count > 0) {
-
                 if (validate_packet(buffer, byte_count)) {
-                    for (int i = 0; i < MAX_DESTINATION_CLIENTS; i++) {
-                    if (destination_clients[i] > 0) {
-                        send(destination_clients[i], buffer, byte_count, 0);
-                        }
-                    }
+                    broadcast(destination_clients, buffer, byte_count);
                 }
             } else if (byte_count == -1) {
                 perror("Data error!");
