@@ -5,6 +5,7 @@
 #include <sys/select.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <errno.h>
 
 #define SOURCE_PORT 33333
 #define DESTINATION_PORT 44444
@@ -25,7 +26,8 @@ int create_listener(int port, int max_clients) {
 
     socket_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (socket_fd < 0) {
-        printf("Error while creating socket!\n");
+        perror("Error while creating socket!");
+        exit(EXIT_FAILURE);
     }
 
     memset(&address, 0, sizeof(address));
@@ -34,10 +36,14 @@ int create_listener(int port, int max_clients) {
     address.sin_addr.s_addr = htonl(INADDR_ANY);
 
     if (bind(socket_fd, (const struct sockaddr *)&address, sizeof(address)) < 0) {
-        printf("Bind failed!\n");
+        perror("Bind failed!");
+        exit(EXIT_FAILURE);
     }
 
-    listen(socket_fd, max_clients);
+    if (listen(socket_fd, max_clients) < 0) {
+        perror("Lisen failed!");
+        exit(EXIT_FAILURE);
+    }
 
     return socket_fd;
 }
@@ -99,7 +105,8 @@ int main(int argc, char const *argv[])
         }
 
         if (select(max_fd + 1, &socket_set, NULL, NULL, NULL) < 0) {
-            printf("Error selecting FD!\n");
+            perror("Error selecting FD!");
+            continue;
         }
 
         // Check for connections on the source socket.
@@ -136,7 +143,7 @@ int main(int argc, char const *argv[])
                     }
                 }
             } else if (byte_count == -1) {
-                printf("Data error!\n");
+                perror("Data error!");
             }
         }
     }
