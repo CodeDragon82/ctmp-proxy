@@ -161,8 +161,10 @@ int main(int argc, char const *argv[])
                 if (validate_packet(buffer, byte_count)) {
                     broadcast(destination_clients, buffer, byte_count);
                 }
-            } else if (byte_count == -1) {
-                perror("Data error!");
+            } else {
+                printf("Source client disconnected\n");
+                close(source_client);
+                source_client = -1;
             }
         }
     }
