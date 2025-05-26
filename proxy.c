@@ -111,10 +111,17 @@ int main(int argc, char const *argv[])
 
         // Check for connections on the source socket.
         if (FD_ISSET(source_socket, &socket_set)) {
-            if (source_client == -1) printf("Source connection!\n");
-            else printf("Source changed!\n");
+            if (source_client != -1) {
+                printf("Closing old source connection.\n");
+                close(source_client);
+            }
 
             source_client = accept(source_socket, (struct sockaddr *)NULL, NULL);
+            if (source_client < 0) {
+                perror("New source connection failed");
+            } else {
+                printf("New source connection: %d\n", source_client);
+            }
         }
 
         // Check for connections on the destination socket.
