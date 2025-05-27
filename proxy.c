@@ -151,8 +151,14 @@ int relay(int source_client, int *destination_clients) {
     char buffer[BUFFER_SIZE];
 
     int byte_count = recv(source_client, buffer, BUFFER_SIZE, 0);
-    if (byte_count > 0 && validate_packet(buffer, byte_count)) {
+    if (byte_count > 0) {
+        printf("Received %d bytes from %d", byte_count, source_client);
+        if (validate_packet(buffer, byte_count)) {
+            printf("Broadcasting valid packet");
         broadcast(destination_clients, buffer, byte_count);
+        } else {
+            printf("Invalid packet");
+        }
     }
 
     return byte_count;
