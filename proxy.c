@@ -86,6 +86,23 @@ void broadcast(int *destination_clients, char *packet, int packet_size) {
     }
 }
 
+/*
+ * Check each destination client connection and close any that are inactive.
+ */
+void check_destination_disconnects(int *destination_clients, fd_set *socket_set) {
+    for (int i = 0; i < MAX_DESTINATION_CLIENTS; i++) {
+        if (destination_clients[i] > 0 && FD_ISSET(destination_clients[i], socket_set)) {
+            char tmp_buf[1];
+            int result = recv(destination_clients[i], tmp_buf, 1, MSG_PEEK | MSG_DONTWAIT);
+            if (result <= 0) {
+                printf("Destination client %d disconnected and removed\n", i);
+                close(destination_clients[i]);
+                destination_clients[i] = 0;
+            } 
+        }
+    }
+}
+
 int main(int argc, char const *argv[])
 {
     fd_set socket_set;
@@ -167,6 +184,8 @@ int main(int argc, char const *argv[])
                 source_client = -1;
             }
         }
+
+        check_destination_disconnects(destination_clients, &socket_set);
     }
 
 
