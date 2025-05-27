@@ -141,6 +141,23 @@ int connect_source(int previous_source, int source_socket) {
     return new_source;
 }
 
+/*
+ * Reads data received from the source client, validates the packet, and
+ * broadcasts it to the destination clients.
+ * 
+ * Returns the number of bytes received from the source client.
+ */
+int relay(int source_client, int *destination_clients) {
+    char buffer[BUFFER_SIZE];
+
+    int byte_count = recv(source_client, buffer, BUFFER_SIZE, 0);
+    if (byte_count > 0 && validate_packet(buffer, byte_count)) {
+        broadcast(destination_clients, buffer, byte_count);
+    }
+
+    return byte_count;
+}
+
 int main(int argc, char const *argv[])
 {
     fd_set socket_set;
@@ -189,13 +206,8 @@ int main(int argc, char const *argv[])
 
         // Check for data from the source client.
         // Broadcast incoming data to the destination clients.
-        if (source_client != -1 && FD_ISSET(source_client, &socket_set)) {
-            int byte_count = recv(source_client, buffer, BUFFER_SIZE, 0);
-            if (byte_count > 0) {
-                if (validate_packet(buffer, byte_count)) {
-                    broadcast(destination_clients, buffer, byte_count);
-                }
-            } else {
+        if (FD_ISSET(source_client, &socket_set)) {
+            if (relay(source_client, destination_clients) < 0) {
                 printf("Source client disconnected\n");
                 close(source_client);
                 source_client = -1;
@@ -204,7 +216,6 @@ int main(int argc, char const *argv[])
 
         check_destination_disconnects(destination_clients, &socket_set);
     }
-
 
     return 0;
 }
