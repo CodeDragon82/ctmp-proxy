@@ -103,6 +103,24 @@ void check_destination_disconnects(int *destination_clients, fd_set *socket_set)
     }
 }
 
+/*
+ * Handle a new client connection on the destination socket.
+ */
+void connect_destination(int *destination_clients, int destination_socket) {
+    int new_destination_client = accept(destination_socket, (struct sockaddr *)NULL, NULL);
+    if (new_destination_client < 0) {
+        perror("New destination connection failed");
+    } else {
+        for (int i = 0; i < MAX_DESTINATION_CLIENTS; i++) {
+            if (destination_clients[i] == 0) {
+                destination_clients[i] = new_destination_client;
+                printf("New destination connection: %d\n", new_destination_client);
+                break;
+            }
+        }
+    }
+}
+
 int main(int argc, char const *argv[])
 {
     fd_set socket_set;
@@ -154,20 +172,9 @@ int main(int argc, char const *argv[])
             }
         }
 
-        // Check for connections on the destination socket.
+        // Check for new connections on the destination socket.
         if (FD_ISSET(destination_socket, &socket_set)) {
-            int new_destination_client = accept(destination_socket, (struct sockaddr *)NULL, NULL);
-            if (new_destination_client < 0) {
-                perror("New destination connection failed");
-            } else {
-                for (int i = 0; i < MAX_DESTINATION_CLIENTS; i++) {
-                    if (destination_clients[i] == 0) {
-                        destination_clients[i] = new_destination_client;
-                        printf("New destination connection: %d\n", new_destination_client);
-                        break;
-                    }
-                }
-            }
+            connect_destination(destination_clients, destination_socket);
         }
 
         // Check for data from the source client.
