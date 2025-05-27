@@ -121,6 +121,26 @@ void connect_destination(int *destination_clients, int destination_socket) {
     }
 }
 
+/*
+ * Handle a new client connection on the source socket.
+ */
+int connect_source(int previous_source, int source_socket) {
+
+    // If an old source client is connection, disconnect it and allow for the new source client.
+    if (previous_source != -1) {
+        printf("Closing old source connection.\n");
+        close(previous_source);
+        return -1;
+    }
+
+    int new_source = accept(source_socket, (struct sockaddr *)NULL, NULL);
+
+    if (new_source < 0) perror("New source connection failed");
+    else printf("New source connection: %d\n", new_source);
+
+    return new_source;
+}
+
 int main(int argc, char const *argv[])
 {
     fd_set socket_set;
@@ -159,17 +179,7 @@ int main(int argc, char const *argv[])
 
         // Check for connections on the source socket.
         if (FD_ISSET(source_socket, &socket_set)) {
-            if (source_client != -1) {
-                printf("Closing old source connection.\n");
-                close(source_client);
-            }
-
-            source_client = accept(source_socket, (struct sockaddr *)NULL, NULL);
-            if (source_client < 0) {
-                perror("New source connection failed");
-            } else {
-                printf("New source connection: %d\n", source_client);
-            }
+            source_client = connect_source(source_client, source_socket);
         }
 
         // Check for new connections on the destination socket.
