@@ -20,7 +20,10 @@ typedef struct __attribute__((packed)) {
     uint8_t data[];
 } ctmp_packet;
 
-int create_listener(int port, int max_clients) {
+/*
+ * Setup a listener socket on a given port.
+ */
+int create_listener(int port) {
     int socket_fd;
     struct sockaddr_in address;
 
@@ -40,21 +43,25 @@ int create_listener(int port, int max_clients) {
         exit(EXIT_FAILURE);
     }
 
-    if (listen(socket_fd, max_clients) < 0) {
-        perror("Lisen failed!");
+    if (listen(socket_fd, 100) < 0) {
+        perror("Listen failed!");
         exit(EXIT_FAILURE);
     }
 
     return socket_fd;
 }
 
-int validate_packet(unsigned char *raw_packet, int packet_size) {
+/*
+ * Casts the raw data received from the source client into a CTMP packet.
+ * Then valids the fields of the CTMP packet.
+ */
+int validate_packet(unsigned char *raw_data, int data_size) {
 
-    if (packet_size < sizeof(ctmp_packet)) {
+    if (data_size < sizeof(ctmp_packet)) {
         return 0;
     }
 
-    ctmp_packet *packet = (ctmp_packet *)raw_packet;
+    ctmp_packet *packet = (ctmp_packet *)raw_data;
 
     if (packet->magic != 0xcc) {
         printf("Wrong magic! %u\n", packet->magic);
@@ -62,17 +69,18 @@ int validate_packet(unsigned char *raw_packet, int packet_size) {
     }
 
     int expected_length = ntohs(packet->length);
-    int actual_length = packet_size - sizeof(ctmp_packet);
+    int actual_length = data_size - sizeof(ctmp_packet);
     if (expected_length != actual_length) {
         printf("Wrong length!\n");
         return 0;
     }
 
-    printf("Validate packet!\n");
-
     return 1;
 }
 
+/*
+ * Send packet data to all destination clients.
+ */
 void broadcast(int *destination_clients, char *packet, int packet_size) {
     for (int i = 0; i < MAX_DESTINATION_CLIENTS; i++) {
         if (destination_clients[i] > 0) {
@@ -152,12 +160,12 @@ int relay(int source_client, int *destination_clients) {
 
     int byte_count = recv(source_client, buffer, BUFFER_SIZE, 0);
     if (byte_count > 0) {
-        printf("Received %d bytes from %d", byte_count, source_client);
+        printf("Received %d bytes from %d\n", byte_count, source_client);
         if (validate_packet(buffer, byte_count)) {
-            printf("Broadcasting valid packet");
-        broadcast(destination_clients, buffer, byte_count);
+            printf("Broadcasting valid packet\n");
+            broadcast(destination_clients, buffer, byte_count);
         } else {
-            printf("Invalid packet");
+            printf("Invalid packet\n");
         }
     }
 
@@ -168,8 +176,8 @@ int main(int argc, char const *argv[])
 {
     fd_set socket_set;
 
-    int source_socket = create_listener(SOURCE_PORT, 10);
-    int destination_socket = create_listener(DESTINATION_PORT, 10);
+    int source_socket = create_listener(SOURCE_PORT);
+    int destination_socket = create_listener(DESTINATION_PORT);
 
     int source_client = -1;
     int destination_clients[MAX_DESTINATION_CLIENTS] = {0};
@@ -187,7 +195,7 @@ int main(int argc, char const *argv[])
             FD_SET(source_client, &socket_set);
             if (source_client > max_fd) max_fd = source_client;
         }
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < MAX_DESTINATION_CLIENTS; i++) {
             int destination_client = destination_clients[i];
             if (destination_client > 0) {
                 FD_SET(destination_client, &socket_set);
