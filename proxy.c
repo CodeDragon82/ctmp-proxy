@@ -97,16 +97,17 @@ int check_checksum(ctmp_packet *packet, int packet_size) {
 }
 
 /*
- * Casts the raw data received from the source client into a CTMP packet.
- * Then valids the fields of the CTMP packet.
+ * Performs the following checks on the packet:
+ * - The packet must be atleast the size of the header (i.e., 16 bytes).
+ * - The magic field must be 0xCC.
+ * - The size of the packet must match the length field.
+ * - If the sensitive bit is set in the option field, validate the checksum.
  */
-int validate_packet(unsigned char *raw_data, int data_size) {
+int validate_packet(ctmp_packet *packet, int packet_size) {
 
-    if (data_size < sizeof(ctmp_packet)) {
+    if (packet_size < sizeof(ctmp_packet)) {
         return 0;
     }
-
-    ctmp_packet *packet = (ctmp_packet *)raw_data;
 
     if (packet->magic != 0xcc) {
         printf("Wrong magic! %u\n", packet->magic);
@@ -114,14 +115,14 @@ int validate_packet(unsigned char *raw_data, int data_size) {
     }
 
     int expected_length = ntohs(packet->length);
-    int actual_length = data_size - sizeof(ctmp_packet);
+    int actual_length = packet_size - sizeof(ctmp_packet);
     if (expected_length != actual_length) {
         printf("Wrong length!\n");
         return 0;
     }
 
     if (packet->options & 0x40) {
-        return check_checksum(packet, data_size);
+        return check_checksum(packet, packet_size);
     }
 
     return 1;
@@ -210,7 +211,7 @@ int relay(int source_client, int *destination_clients) {
     int byte_count = recv(source_client, buffer, BUFFER_SIZE, 0);
     if (byte_count > 0) {
         printf("Received %d bytes from %d\n", byte_count, source_client);
-        if (validate_packet(buffer, byte_count)) {
+        if (validate_packet((ctmp_packet *)buffer, byte_count)) {
             printf("Broadcasting valid packet\n");
             broadcast(destination_clients, buffer, byte_count);
         } else {
