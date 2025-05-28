@@ -14,9 +14,10 @@
 
 typedef struct __attribute__((packed)) {
     uint8_t magic;
-    uint8_t padding1;
+    uint8_t options;
     uint16_t length;
-    uint32_t padding2;
+    uint16_t checksum;
+    uint16_t padding;
     uint8_t data[];
 } ctmp_packet;
 
@@ -52,6 +53,50 @@ int create_listener(int port) {
 }
 
 /*
+ * Calculates the packet's checksum based on the 'Internet Checksum' standard
+ * defined in RFC 1071.
+ */
+int calculate_checksum(unsigned char *packet_data, int packet_size) {
+    uint32_t sum = 0;
+
+    for (int i = 0; i < packet_size - 1; i += 2) {
+        uint16_t word = packet_data[i] << 8;
+
+        if (i + 1 < packet_size) {
+            word |= packet_data[i + 1];
+        }
+
+        sum += word;
+
+        // Fold the carry bits.
+        if (sum > 0xFFFF) {
+            sum = (sum & 0xFFFF) + 1;
+        }
+    }
+
+    return (uint16_t)~sum;
+}
+
+/*
+ * Calculates the checksum of the packet and compares it to the expected
+ * checksum defined within the packet.
+ */
+int check_checksum(ctmp_packet *packet, int packet_size) {
+    int expected_checksum = packet->checksum;
+
+    packet->checksum = 0xCCCC;
+    int actual_checksum = calculate_checksum((unsigned char *)packet, packet_size);
+    packet->checksum = expected_checksum;
+
+    if (ntohs(expected_checksum) != actual_checksum) {
+        printf("Wrong checksum! Expected %d but got %d\n", expected_checksum, actual_checksum);
+        return 0;
+    }
+
+    return 1;
+}
+
+/*
  * Casts the raw data received from the source client into a CTMP packet.
  * Then valids the fields of the CTMP packet.
  */
@@ -73,6 +118,10 @@ int validate_packet(unsigned char *raw_data, int data_size) {
     if (expected_length != actual_length) {
         printf("Wrong length!\n");
         return 0;
+    }
+
+    if (packet->options & 0x40) {
+        return check_checksum(packet, data_size);
     }
 
     return 1;
