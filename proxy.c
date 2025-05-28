@@ -7,19 +7,12 @@
 #include <netinet/in.h>
 #include <errno.h>
 
+#include "packet.h"
+
 #define SOURCE_PORT 33333
 #define DESTINATION_PORT 44444
 #define BUFFER_SIZE 70000
 #define MAX_DESTINATION_CLIENTS 100
-
-typedef struct __attribute__((packed)) {
-    uint8_t magic;
-    uint8_t options;
-    uint16_t length;
-    uint16_t checksum;
-    uint16_t padding;
-    uint8_t data[];
-} ctmp_packet;
 
 /*
  * Setup a listener socket on a given port.
@@ -50,82 +43,6 @@ int create_listener(int port) {
     }
 
     return socket_fd;
-}
-
-/*
- * Calculates the packet's checksum based on the 'Internet Checksum' standard
- * defined in RFC 1071.
- */
-int calculate_checksum(unsigned char *packet_data, int packet_size) {
-    uint32_t sum = 0;
-
-    for (int i = 0; i < packet_size - 1; i += 2) {
-        uint16_t word = packet_data[i] << 8;
-
-        if (i + 1 < packet_size) {
-            word |= packet_data[i + 1];
-        }
-
-        sum += word;
-
-        // Fold the carry bits.
-        if (sum > 0xFFFF) {
-            sum = (sum & 0xFFFF) + 1;
-        }
-    }
-
-    return (uint16_t)~sum;
-}
-
-/*
- * Calculates the checksum of the packet and compares it to the expected
- * checksum defined within the packet.
- */
-int check_checksum(ctmp_packet *packet, int packet_size) {
-    int expected_checksum = packet->checksum;
-
-    packet->checksum = 0xCCCC;
-    int actual_checksum = calculate_checksum((unsigned char *)packet, packet_size);
-    packet->checksum = expected_checksum;
-
-    if (ntohs(expected_checksum) != actual_checksum) {
-        printf("Wrong checksum! Expected %d but got %d\n", expected_checksum, actual_checksum);
-        return 0;
-    }
-
-    return 1;
-}
-
-/*
- * Performs the following checks on the packet:
- * - The packet must be atleast the size of the header (i.e., 16 bytes).
- * - The magic field must be 0xCC.
- * - The size of the packet must match the length field.
- * - If the sensitive bit is set in the option field, validate the checksum.
- */
-int validate_packet(ctmp_packet *packet, int packet_size) {
-
-    if (packet_size < sizeof(ctmp_packet)) {
-        return 0;
-    }
-
-    if (packet->magic != 0xcc) {
-        printf("Wrong magic! %u\n", packet->magic);
-        return 0;
-    }
-
-    int expected_length = ntohs(packet->length);
-    int actual_length = packet_size - sizeof(ctmp_packet);
-    if (expected_length != actual_length) {
-        printf("Wrong length!\n");
-        return 0;
-    }
-
-    if (packet->options & 0x40) {
-        return check_checksum(packet, packet_size);
-    }
-
-    return 1;
 }
 
 /*
